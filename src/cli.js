@@ -16,7 +16,7 @@ const readServerlessYaml = (filePath, stage, showService = true, prefix = '') =>
     .mapErr(err => `Error reading yaml file: ${filePath}, \nError: ${err}`)
     .chain(yml => yml.functions ? Ok(yml) : Err(`No functions declared in yaml file: ${config}`))
     .map(({ functions, service }) => Object.keys(functions).map(key => ({
-      name: getFunctionName(service, showService)(stage)(prefix)(name),
+      name: getFunctionName(service, showService)(stage)(prefix)(key),
       display: functions[key].name,
       description: functions[key].description,
       handler: functions[key].handler
