@@ -58,6 +58,14 @@ const createServer = (showQuantor = true) => (logFormat = 'dev') => port => func
   app.listen(port, () => console.log(`Coppa listening on port ${port}!`))
 }
 
+const stringToBoolean =(string) =>{
+  switch(string.toLowerCase().trim()){
+      case "true": case "yes": case "1": return true;
+      case "false": case "no": case "0": case null: return false;
+      default: return Boolean(string);
+  }
+}
+
 const start = opts => {
   const port = opts.port || 8080
   const config = opts.config || './serverless.yml'
@@ -68,7 +76,7 @@ const start = opts => {
   const prefix = opts.prefix || ''
   const showService = opts.service
 
-  readServerlessYaml(config, stage, showService, prefix)
+  readServerlessYaml(config, stage, stringToBoolean(showService), prefix)
     .chain(handlers => readFunctionsJs(entry).map(funcsMod => ({ handlers, funcsMod })))
     .map(sanitizeFuncs)
     .cata({
