@@ -11,16 +11,22 @@ const yaml = require('js-yaml')
 const quantor = require('quantor')
 const { Ok, Err, encaseRes } = require('pratica')
 
-const readServerlessYaml = (filePath, stage) =>
+const readServerlessYaml = (filePath, stage, showService = true, prefix = '') =>
   encaseRes(() => yaml.safeLoad(fs.readFileSync(filePath, 'utf8')))
     .mapErr(err => `Error reading yaml file: ${filePath}, \nError: ${err}`)
     .chain(yml => yml.functions ? Ok(yml) : Err(`No functions declared in yaml file: ${config}`))
     .map(({ functions, service }) => Object.keys(functions).map(key => ({
-      name: stage ? `/${service}-${stage}-${key}` : `/${service}-${key}`,
+      name: getFunctionName(service, showService)(stage)(prefix)(name),
       display: functions[key].name,
       description: functions[key].description,
       handler: functions[key].handler
     })))
+
+const getFunctionName = (service, showService) => stage => prefix => name => 
+    encaseRes(()=> name)
+    .map((functionName) => stage ? `${stage}-${functionName}` : `${functionName}`)
+    .map((functionName) => showService ? `${service}-${functionName}` : `${functionName}`)
+    .map((functionName) => prefix ? `/${prefix}-${functionName}` : `/${functionName}`)
 
 const readFunctionsJs = filePath =>
   encaseRes(() => require(path.resolve(filePath)))
@@ -30,25 +36,25 @@ const sanitizeFuncs = ({ handlers, funcsMod }) => handlers
   .map(({ name, display, description, handler }) => ({ name, display, description, handler: funcsMod[handler] }))
   .filter(({ handler }) => !!handler)
 
-const createServer = port => funcs => {
+const createServer = (showQuantor = true) => (logFormat = 'dev') => port => funcs => {
   const app = express()
   app.use(bodyParser.urlencoded({ extended: true }))
   app.use(bodyParser.json())
-  app.use(morgan('dev'))
+  app.use(morgan(logFormat))
   app.use(cors())
 
   funcs.map(({ name, handler }) => console.log(name) || app.all(name, handler))
-
-  app.get('/', (req, res) => quantor({
-    title: 'Coppa Server',
-    endpoints: funcs.map(({ name, display, description }) => ({
-      name,
-      description: description || 'No description provided...',
-      display: display || 'No name provided...',
-      handlers: { GET: {}, POST: {}, PUT: {}, DELETE: {} }
-    }))
-  })(html => res.send(html)))
-
+  if(showQuantor){
+    app.get('/', (req, res) => quantor({
+      title: 'Coppa Server',
+      endpoints: funcs.map(({ name, display, description }) => ({
+        name,
+        description: description || 'No description provided...',
+        display: display || 'No name provided...',
+        handlers: { GET: {}, POST: {}, PUT: {}, DELETE: {} }
+      }))
+    })(html => res.send(html)))
+  }
   app.listen(port, () => console.log(`Coppa listening on port ${port}!`))
 }
 
@@ -57,12 +63,16 @@ const start = opts => {
   const config = opts.config || './serverless.yml'
   const entry = opts.entry || './index.js'
   const stage = opts.stage
+  const logFormat = opts.logFormat 
+  const showQuantor = opts.showQuantor
+  const prefix = opts.prefix || ''
+  const showService = opts.service
 
-  readServerlessYaml(config, stage)
+  readServerlessYaml(config, stage, showService, prefix)
     .chain(handlers => readFunctionsJs(entry).map(funcsMod => ({ handlers, funcsMod })))
     .map(sanitizeFuncs)
     .cata({
-      Ok: createServer(port),
+      Ok: createServer(showQuantor)(logFormat)(port),
       Err: msg => {
         console.error(msg)
         process.exit(1)
@@ -81,6 +91,10 @@ program
   .option('-e, --entry [path]', 'Path to JS entry point file (default: ./index.js)')
   .option('-s, --stage [stage]', 'Stage to be used')
   .option('-p, --port [port]', 'Port for server to use (default: 8080)')
+  .option('-q, --quantor [boolean]', 'Show Quantor Page (true by default)')
+  .option('-l, --log [format]', 'Log output format (default dev)')
+  .option('-P, --prefix [prefix]','Prefix add it to the function name (default empty)')
+  .option('-S, --service [boolean]','Add the service name into the name of the function (default true)')
   .action(start)
 
 program.parse(process.argv)
