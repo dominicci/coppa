@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: coppa-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coppa
+spec:
+  ports:
+    - name: https
+      port: 443
+      targetPort: 50501
+  selector:
+    app: coppa
+    version: {{ .Values.stage }}

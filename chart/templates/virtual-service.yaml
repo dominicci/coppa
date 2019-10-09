@@ -1,0 +1,18 @@
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: coppa-virtual-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coppa
+spec:
+  gateways:
+    - coppa-gateway.{{ .Release.Namespace }}.svc.cluster.local
+  hosts:
+    - {{ .Values.host }}
+  http:
+    - route:
+      - destination:
+          host: coppa-service.{{ .Release.Namespace }}.svc.cluster.local
+          subset: {{ .Values.stage }}
+        weight: 100

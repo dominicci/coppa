@@ -1,0 +1,14 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: coppa-pvc-nfs
+  namespace: {{ .Release.Namespace }}
+spec:
+  storageClassName: ""
+  volumeName: coppa-vol-nfs
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi

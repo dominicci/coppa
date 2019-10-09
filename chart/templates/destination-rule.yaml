@@ -1,0 +1,11 @@
+kind: DestinationRule
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: coppa-destination-rule
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: coppa-service.{{ .Release.Namespace }}.svc.cluster.local
+  subsets:
+      - name: {{ .Values.stage }}
+        labels:
+          version: {{ .Values.stage }}

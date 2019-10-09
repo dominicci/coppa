@@ -1,0 +1,73 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: coppa
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: coppa
+    version: {{ .Values.stage }}
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 5
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: coppa
+      version: {{ .Values.stage }}
+  template:
+    name: {{ .Release.Namespace }}-beatrice
+    metadata:
+      labels:
+        app: coppa
+        version: {{ .Values.stage }}
+    spec:
+      containers:
+        - name: coppa
+          image: gcr.io/{{ .Values.gcloudProjectId }}/coppa:{{ .Values.stage }}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50501
+          livenessProbe:
+            httpGet:
+              path: /health?lp
+              port: 50501
+          readinessProbe:
+            httpGet:
+              path: /health?rp
+              port: 50501
+          volumeMounts:
+            - name: builds
+              mountPath: /data
+          envFrom:
+            - configMapRef:
+                name: coppa-config
+            - secretRef:
+                name: coppa-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "400m"
+            limits:
+              memory: "256Mi"
+              cpu: "400m"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+                - matchExpressions:
+                  - key: target
+                    operator: NotIn
+                    values:
+                      - "high-perf"
+                  - key: cloud.google.com/gke-preemptible
+                    operator: DoesNotExist
+      volumes:
+        - name: builds
+          persistentVolumeClaim:
+            claimName: coppa-pvc-nfs
+            readOnly: false

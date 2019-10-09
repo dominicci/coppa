@@ -56,6 +56,8 @@ const createServer = (showQuantor = true) => (logFormat = 'dev') => port => func
     })(html => res.send(html)))
   }
   app.listen(port, () => console.log(`Coppa listening on port ${port}!`))
+  // Health check
+  app.get('/health', (req, res) => res.status(200).json('healthy'))
 }
 
 const stringToBoolean =(string) =>{
